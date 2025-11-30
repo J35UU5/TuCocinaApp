@@ -100,10 +100,7 @@
 
                 } else if (type === 'success') {
                     // "Campana Suave" o "Notificación Zen" (Publicar)
-                    // Un tono limpio con un "release" largo, muy agradable
                     osc.type = 'sine';
-                    // Usamos dos osciladores para un efecto más rico si pudiéramos, 
-                    // pero con uno simple basta si ajustamos el envelope.
                     osc.frequency.setValueAtTime(500, now); 
                     osc.frequency.linearRampToValueAtTime(800, now + 0.1); // Ligera subida elegante
                     
@@ -281,7 +278,7 @@
 
             const submitProposal = () => {
                 if (!proposalText.trim()) return;
-                playSound('success'); // Ahora suena como campana suave
+                playSound('success');
                 const updatedRecipes = recipes.map(recipe => {
                     if (recipe.id === selectedRecipeId) {
                         const newProposal = {
