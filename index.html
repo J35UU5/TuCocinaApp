@@ -28,7 +28,6 @@
         .modal-enter { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes modalPop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         
-        /* Ocultar scrollbar para estética móvil */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -71,8 +70,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         );
 
-        // --- SONIDOS (WEB AUDIO API - SINTETIZADOR) ---
-        // Genera sonidos sin necesidad de archivos externos
+        // --- SONIDOS MEJORADOS (SOFT UI) ---
         const playSound = (type) => {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -88,27 +86,38 @@
                 const now = ctx.currentTime;
                 
                 if (type === 'click') {
-                    // Sonido tipo "Pop" o "Click" suave
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(600, now);
-                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    // "Burbuja" o "Pop" suave (Like/Guardar)
+                    // Frecuencia media, caída rápida, sin ataque agresivo
+                    osc.type = 'sine'; // Onda senoidal es más suave
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.15); // Caída más curva
+                    
+                    gain.gain.setValueAtTime(0.08, now); // Volumen bajo
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    
                     osc.start(now);
-                    osc.stop(now + 0.1);
+                    osc.stop(now + 0.15);
+
                 } else if (type === 'success') {
-                    // Sonido de "Éxito" (Acorde mayor rápido o campanada)
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(523.25, now); // Do
-                    osc.frequency.setValueAtTime(659.25, now + 0.1); // Mi
-                    gain.gain.setValueAtTime(0.05, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(now);
-                    osc.stop(now + 0.4);
-                } else if (type === 'nav') {
-                    // Sonido de navegación muy sutil
+                    // "Campana Suave" o "Notificación Zen" (Publicar)
+                    // Un tono limpio con un "release" largo, muy agradable
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(400, now);
+                    // Usamos dos osciladores para un efecto más rico si pudiéramos, 
+                    // pero con uno simple basta si ajustamos el envelope.
+                    osc.frequency.setValueAtTime(500, now); 
+                    osc.frequency.linearRampToValueAtTime(800, now + 0.1); // Ligera subida elegante
+                    
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.08, now + 0.05); // Ataque suave (fade in)
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2); // Decay largo y relajante
+                    
+                    osc.start(now);
+                    osc.stop(now + 1.2);
+
+                } else if (type === 'nav') {
+                    // Clic de navegación casi imperceptible
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
                     gain.gain.setValueAtTime(0.02, now);
                     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
                     osc.start(now);
@@ -186,6 +195,7 @@
             const [likedRecipes, setLikedRecipes] = useState([]);
             const [activeTab, setActiveTab] = useState('feed'); 
             const [user, setUser] = useState(null);
+            const [registeredUsers, setRegisteredUsers] = useState([]); // Base de datos local de usuarios
             const [viewingRecipe, setViewingRecipe] = useState(null);
             
             // Estado para MODALES
@@ -197,22 +207,20 @@
             
             // Estado para NUEVA RECETA
             const [newRecipe, setNewRecipe] = useState({
-                title: "",
-                description: "",
-                image: "",
-                ingredients: "", // Se procesará como string y luego array
-                steps: "", // Se procesará como string y luego array
-                time: ""
+                title: "", description: "", image: "", ingredients: "", steps: "", time: ""
             });
 
-            // Login Input State
-            const [loginEmail, setLoginEmail] = useState("");
+            // LOGIN / REGISTRO State
+            const [isRegisterMode, setIsRegisterMode] = useState(false);
+            const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+            const [authError, setAuthError] = useState("");
 
             useEffect(() => {
                 const storedRecipes = localStorage.getItem('tc_recipes');
                 const storedFavs = localStorage.getItem('tc_favorites');
                 const storedLikes = localStorage.getItem('tc_likes');
                 const storedUser = localStorage.getItem('tc_user');
+                const storedRegUsers = localStorage.getItem('tc_reg_users'); // Cargar usuarios registrados
 
                 if (storedRecipes) {
                     setRecipes(JSON.parse(storedRecipes));
@@ -224,17 +232,19 @@
                 if (storedFavs) setFavorites(JSON.parse(storedFavs));
                 if (storedLikes) setLikedRecipes(JSON.parse(storedLikes));
                 if (storedUser) setUser(JSON.parse(storedUser));
+                if (storedRegUsers) setRegisteredUsers(JSON.parse(storedRegUsers));
             }, []);
 
             useEffect(() => { if (recipes.length > 0) localStorage.setItem('tc_recipes', JSON.stringify(recipes)); }, [recipes]);
             useEffect(() => { localStorage.setItem('tc_favorites', JSON.stringify(favorites)); }, [favorites]);
             useEffect(() => { localStorage.setItem('tc_likes', JSON.stringify(likedRecipes)); }, [likedRecipes]);
+            useEffect(() => { localStorage.setItem('tc_reg_users', JSON.stringify(registeredUsers)); }, [registeredUsers]); // Guardar usuarios nuevos
 
             // --- LÓGICA DE INTERACCIÓN ---
 
             const handleLike = (id, e) => {
                 if(e) e.stopPropagation();
-                playSound('click');
+                playSound('click'); // Ahora suena como "pop"
                 const isLiked = likedRecipes.includes(id);
                 let newLikedRecipes = isLiked ? likedRecipes.filter(lid => lid !== id) : [...likedRecipes, id];
                 setLikedRecipes(newLikedRecipes);
@@ -248,7 +258,7 @@
 
             const toggleFavorite = (id, e) => {
                 if(e) e.stopPropagation();
-                playSound('click');
+                playSound('click'); // Ahora suena como "pop"
                 if (favorites.includes(id)) {
                     setFavorites(favorites.filter(favId => favId !== id));
                 } else {
@@ -271,7 +281,7 @@
 
             const submitProposal = () => {
                 if (!proposalText.trim()) return;
-                playSound('success'); 
+                playSound('success'); // Ahora suena como campana suave
                 const updatedRecipes = recipes.map(recipe => {
                     if (recipe.id === selectedRecipeId) {
                         const newProposal = {
@@ -288,18 +298,56 @@
                 setProposalModalOpen(false);
             };
 
-            // --- LÓGICA DE LOGIN DINÁMICO ---
-            const handleLogin = (e) => {
+            // --- LÓGICA DE AUTENTICACIÓN (LOGIN/REGISTRO) ---
+            const handleAuthSubmit = (e) => {
                 e.preventDefault();
-                playSound('success');
-                // Simulamos crear un usuario basado en el email
-                const generatedName = loginEmail.split('@')[0];
-                const cleanName = generatedName.charAt(0).toUpperCase() + generatedName.slice(1);
-                
-                const fakeUser = { name: cleanName, email: loginEmail };
-                setUser(fakeUser);
-                localStorage.setItem('tc_user', JSON.stringify(fakeUser));
-                setLoginEmail("");
+                setAuthError("");
+
+                if (isRegisterMode) {
+                    // REGISTRO
+                    if (!authForm.name || !authForm.email || !authForm.password) {
+                        setAuthError("Por favor llena todos los campos.");
+                        return;
+                    }
+                    
+                    // Verificar si ya existe
+                    const userExists = registeredUsers.some(u => u.email === authForm.email);
+                    if (userExists) {
+                        setAuthError("Este correo ya está registrado.");
+                        return;
+                    }
+
+                    // Crear nuevo usuario
+                    const newUser = { name: authForm.name, email: authForm.email, password: authForm.password };
+                    const updatedUsers = [...registeredUsers, newUser];
+                    
+                    setRegisteredUsers(updatedUsers);
+                    setUser(newUser); // Auto-login
+                    localStorage.setItem('tc_user', JSON.stringify(newUser));
+                    playSound('success');
+
+                } else {
+                    // LOGIN
+                    const foundUser = registeredUsers.find(u => u.email === authForm.email && u.password === authForm.password);
+                    
+                    if (foundUser) {
+                        setUser(foundUser);
+                        localStorage.setItem('tc_user', JSON.stringify(foundUser));
+                        playSound('success');
+                        setAuthForm({ name: "", email: "", password: "" }); // Limpiar
+                    } else {
+                        // BACKDOOR PARA DEMO: Si no hay usuarios registrados, permitir el demo user por defecto
+                        if (registeredUsers.length === 0 && authForm.email.includes("@")) {
+                            const demoName = authForm.email.split('@')[0];
+                            const demoUser = { name: demoName.charAt(0).toUpperCase() + demoName.slice(1), email: authForm.email };
+                            setUser(demoUser);
+                            localStorage.setItem('tc_user', JSON.stringify(demoUser));
+                            playSound('success');
+                        } else {
+                            setAuthError("Credenciales incorrectas.");
+                        }
+                    }
+                }
             };
 
             // --- LÓGICA DE SUBIR RECETA ---
@@ -309,13 +357,13 @@
                     return;
                 }
                 
-                playSound('success');
+                playSound('success'); // Suave
 
                 const recipeToAdd = {
-                    id: Date.now(), // ID único basado en tiempo
+                    id: Date.now(),
                     title: newRecipe.title,
                     author: user ? user.name : "Invitado",
-                    image: newRecipe.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80", // Placeholder si no hay imagen
+                    image: newRecipe.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80", 
                     description: newRecipe.description,
                     ingredients: newRecipe.ingredients.split(',').map(i => i.trim()).filter(i => i),
                     steps: newRecipe.steps.split('\n').map(s => s.trim()).filter(s => s),
@@ -326,10 +374,104 @@
 
                 setRecipes([recipeToAdd, ...recipes]);
                 setUploadModalOpen(false);
-                setNewRecipe({ title: "", description: "", image: "", ingredients: "", steps: "", time: "" }); // Reset form
+                setNewRecipe({ title: "", description: "", image: "", ingredients: "", steps: "", time: "" });
             };
 
-            // --- VISTAS ---
+            // --- UI COMPONENTS ---
+            // (Reutilizando los mismos componentes de renderizado de la versión anterior)
+
+            // VISTA DE CUENTA MODIFICADA PARA LOGIN/REGISTRO
+            const renderAccount = () => (
+                <div className="p-6 fade-in min-h-screen flex flex-col justify-center items-center pb-24">
+                    {user ? (
+                        <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm text-center border border-gray-100">
+                            <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-md">
+                                <span className="text-4xl">👨‍🍳</span>
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
+                            <p className="text-gray-500 mb-6 text-sm">{user.email}</p>
+                            <div className="bg-emerald-50 p-4 rounded-xl text-left mb-6 border border-emerald-100">
+                                <p className="text-sm text-emerald-900 mb-1"><strong>Nivel:</strong> Sous Chef</p>
+                                <p className="text-sm text-emerald-900"><strong>Aportes:</strong> {recipes.reduce((acc, r) => acc + r.proposals.filter(p => p.user === user.name).length, 0)} mejoras</p>
+                            </div>
+                            <button onClick={() => {setUser(null); localStorage.removeItem('tc_user'); setAuthForm({ name: "", email: "", password: "" });}} className="w-full py-3 text-red-500 font-bold border border-red-100 rounded-xl hover:bg-red-50 transition text-sm">Cerrar Sesión</button>
+                        </div>
+                    ) : (
+                        <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm border border-gray-100 transition-all duration-300">
+                            <div className="text-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-800">{isRegisterMode ? "Crear Cuenta" : "Bienvenido"}</h2>
+                                <p className="text-gray-500 text-sm mt-1">{isRegisterMode ? "Únete a la comunidad" : "Inicia sesión para continuar"}</p>
+                            </div>
+                            
+                            <form onSubmit={handleAuthSubmit} className="space-y-4">
+                                {isRegisterMode && (
+                                    <div className="fade-in">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nombre</label>
+                                        <input type="text" required={isRegisterMode} value={authForm.name} onChange={(e) => setAuthForm({...authForm, name: e.target.value})} className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="Tu Nombre"/>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email</label>
+                                    <input type="email" required value={authForm.email} onChange={(e) => setAuthForm({...authForm, email: e.target.value})} className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="chef@ejemplo.com"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Contraseña</label>
+                                    <input type="password" required value={authForm.password} onChange={(e) => setAuthForm({...authForm, password: e.target.value})} className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="••••••••"/>
+                                </div>
+                                
+                                {authError && <p className="text-red-500 text-xs text-center font-bold">{authError}</p>}
+                                
+                                <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition btn-press mt-2">
+                                    {isRegisterMode ? "Registrarse" : "Iniciar Sesión"}
+                                </button>
+                            </form>
+                            
+                            <div className="mt-6 text-center">
+                                <p className="text-xs text-gray-400 mb-2">
+                                    {isRegisterMode ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}
+                                </p>
+                                <button onClick={() => {setIsRegisterMode(!isRegisterMode); setAuthError("");}} className="text-emerald-600 font-bold text-sm hover:underline">
+                                    {isRegisterMode ? "Inicia Sesión aquí" : "Regístrate gratis"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+
+            // ... (Resto de los renderers igual que antes: RecipeCard, renderFeed, renderFavorites, renderRecipeDetail) ...
+            
+            const RecipeCard = ({ recipe, isFav, isLiked, onLike, onFav, onPropose, onClick }) => (
+                <div onClick={onClick} className="bg-white rounded-3xl shadow-md shadow-gray-100 mx-4 mb-8 overflow-hidden border border-gray-50 transition-all hover:shadow-lg cursor-pointer transform hover:scale-[1.02]">
+                    <div className="relative h-56">
+                        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover"/>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                        <button onClick={onFav} className="absolute top-4 right-4 bg-white/30 backdrop-blur-md p-2 rounded-full shadow-sm btn-press hover:bg-white/50 transition border border-white/20">
+                            <IconBookmark filled={isFav} />
+                        </button>
+                        <div className="absolute bottom-4 left-4 text-white w-full pr-4">
+                            <h3 className="text-xl font-bold shadow-black drop-shadow-md truncate">{recipe.title}</h3>
+                            <p className="text-xs opacity-90 flex items-center gap-1 mt-1 font-medium"><span className="text-emerald-300">Por:</span> {recipe.author}</p>
+                        </div>
+                    </div>
+                    <div className="p-5">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex gap-2 flex-wrap">
+                                {recipe.time && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md tracking-wider border border-gray-200 flex items-center gap-1"><IconClock/> {recipe.time}</span>}
+                                {recipe.ingredients && <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md tracking-wider border border-emerald-100">{recipe.ingredients.length} Ingredientes</span>}
+                            </div>
+                            <button onClick={onLike} className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-xs btn-press transition border ${isLiked ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                <IconHeart filled={isLiked} /> {recipe.likes}
+                            </button>
+                        </div>
+                        <p className="text-gray-600 text-sm mb-4 leading-relaxed line-clamp-2">{recipe.description}</p>
+                        <p className="text-emerald-600 text-xs font-bold mb-4 underline">Ver receta completa &rarr;</p>
+                        <button onClick={onPropose} className="w-full py-3 border border-emerald-600 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-600 hover:text-white transition-all btn-press flex justify-center items-center gap-2 shadow-sm">
+                            <IconMessage /> Proponer un Cambio
+                        </button>
+                    </div>
+                </div>
+            );
 
             const renderRecipeDetail = () => {
                 if (!viewingRecipe) return null;
@@ -414,38 +556,6 @@
                 );
             };
 
-            const RecipeCard = ({ recipe, isFav, isLiked, onLike, onFav, onPropose, onClick }) => (
-                <div onClick={onClick} className="bg-white rounded-3xl shadow-md shadow-gray-100 mx-4 mb-8 overflow-hidden border border-gray-50 transition-all hover:shadow-lg cursor-pointer transform hover:scale-[1.02]">
-                    <div className="relative h-56">
-                        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover"/>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                        <button onClick={onFav} className="absolute top-4 right-4 bg-white/30 backdrop-blur-md p-2 rounded-full shadow-sm btn-press hover:bg-white/50 transition border border-white/20">
-                            <IconBookmark filled={isFav} />
-                        </button>
-                        <div className="absolute bottom-4 left-4 text-white w-full pr-4">
-                            <h3 className="text-xl font-bold shadow-black drop-shadow-md truncate">{recipe.title}</h3>
-                            <p className="text-xs opacity-90 flex items-center gap-1 mt-1 font-medium"><span className="text-emerald-300">Por:</span> {recipe.author}</p>
-                        </div>
-                    </div>
-                    <div className="p-5">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex gap-2 flex-wrap">
-                                {recipe.time && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md tracking-wider border border-gray-200 flex items-center gap-1"><IconClock/> {recipe.time}</span>}
-                                {recipe.ingredients && <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md tracking-wider border border-emerald-100">{recipe.ingredients.length} Ingredientes</span>}
-                            </div>
-                            <button onClick={onLike} className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-xs btn-press transition border ${isLiked ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                <IconHeart filled={isLiked} /> {recipe.likes}
-                            </button>
-                        </div>
-                        <p className="text-gray-600 text-sm mb-4 leading-relaxed line-clamp-2">{recipe.description}</p>
-                        <p className="text-emerald-600 text-xs font-bold mb-4 underline">Ver receta completa &rarr;</p>
-                        <button onClick={onPropose} className="w-full py-3 border border-emerald-600 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-600 hover:text-white transition-all btn-press flex justify-center items-center gap-2 shadow-sm">
-                            <IconMessage /> Proponer un Cambio
-                        </button>
-                    </div>
-                </div>
-            );
-
             // --- RENDERIZADO PRINCIPAL ---
             return (
                 <div className="max-w-md mx-auto bg-gray-50 min-h-screen shadow-2xl relative border-x border-gray-200">
@@ -471,7 +581,6 @@
                                         onClick={() => openRecipeDetail(recipe)}
                                     />
                                 ))}
-                                {/* FAB BUTTON (ADD RECIPE) */}
                                 <button onClick={() => setUploadModalOpen(true)} className="fixed bottom-24 right-6 bg-emerald-600 text-white p-4 rounded-full shadow-lg shadow-emerald-200 btn-press z-30 flex items-center justify-center hover:bg-emerald-700 transition transform hover:scale-105">
                                     <IconPlus />
                                 </button>
@@ -504,43 +613,7 @@
                             </div>
                         )}
 
-                        {activeTab === 'account' && (
-                            <div className="p-6 fade-in min-h-screen flex flex-col justify-center items-center pb-24">
-                                {user ? (
-                                    <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm text-center border border-gray-100">
-                                        <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-md">
-                                            <span className="text-4xl">👨‍🍳</span>
-                                        </div>
-                                        <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
-                                        <p className="text-gray-500 mb-6 text-sm">{user.email}</p>
-                                        <div className="bg-emerald-50 p-4 rounded-xl text-left mb-6 border border-emerald-100">
-                                            <p className="text-sm text-emerald-900 mb-1"><strong>Nivel:</strong> Sous Chef</p>
-                                            <p className="text-sm text-emerald-900"><strong>Aportes:</strong> {recipes.reduce((acc, r) => acc + r.proposals.filter(p => p.user === user.name).length, 0)} mejoras</p>
-                                        </div>
-                                        <button onClick={() => {setUser(null); localStorage.removeItem('tc_user');}} className="w-full py-3 text-red-500 font-bold border border-red-100 rounded-xl hover:bg-red-50 transition text-sm">Cerrar Sesión</button>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm border border-gray-100">
-                                        <div className="text-center mb-8">
-                                            <h2 className="text-2xl font-bold text-gray-800">Bienvenido</h2>
-                                            <p className="text-gray-500 text-sm mt-1">Únete a la comunidad gastronómica</p>
-                                        </div>
-                                        <form onSubmit={handleLogin} className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email</label>
-                                                <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="tu_nombre@ejemplo.com"/>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Contraseña</label>
-                                                <input type="password" required className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="••••••••"/>
-                                            </div>
-                                            <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition btn-press mt-2">Iniciar Sesión</button>
-                                        </form>
-                                        <p className="mt-6 text-xs text-center text-gray-400 max-w-[200px] mx-auto">No necesitas cuenta para ver o proponer cambios en recetas.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {activeTab === 'account' && renderAccount()}
                     </main>
 
                     {/* Navbar */}
