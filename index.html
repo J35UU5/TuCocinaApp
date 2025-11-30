@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu Cocina | Conectada al Mundo</title>
+    
+    <!-- React y ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Outfit', sans-serif; background-color: #f0fdf4; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .slide-up { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .btn-press:active { transform: scale(0.95); }
+        .modal-enter { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes modalPop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Ocultar scrollbar para estética móvil */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- ICONOS SVG ---
+        const IconHeart = ({ filled }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={filled ? "#ef4444" : "none"} stroke={filled ? "#ef4444" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        );
+        const IconMessage = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="12" y1="7" x2="12" y2="13"/></svg>
+        );
+        const IconBookmark = ({ filled }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={filled ? "#059669" : "none"} stroke={filled ? "#059669" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        );
+        const IconUser = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        );
+        const IconChef = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>
+        );
+        const IconHome = ({ active }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? "#059669" : "#9ca3af"} strokeWidth={active ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        );
+        const IconArrowLeft = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        );
+        const IconClock = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        );
+        const IconPlus = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        );
+        const IconImage = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        );
+
+        // --- SONIDOS (WEB AUDIO API - SINTETIZADOR) ---
+        // Genera sonidos sin necesidad de archivos externos
+        const playSound = (type) => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                const now = ctx.currentTime;
+                
+                if (type === 'click') {
+                    // Sonido tipo "Pop" o "Click" suave
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'success') {
+                    // Sonido de "Éxito" (Acorde mayor rápido o campanada)
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // Do
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // Mi
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'nav') {
+                    // Sonido de navegación muy sutil
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    gain.gain.setValueAtTime(0.02, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                }
+            } catch (e) {
+                console.error("Audio no soportado o bloqueado", e);
+            }
+        };
+
+        // --- DATOS INICIALES ---
+        const INITIAL_DATA = [
+            {
+                id: 1,
+                title: "Pasta Carbonara Real",
+                author: "ChefMario",
+                image: "https://images.unsplash.com/photo-1612874742237-6526221588e3?auto=format&fit=crop&w=800&q=80",
+                description: "La auténtica receta romana. Cero crema, puro sabor a huevo y queso Pecorino.",
+                ingredients: ["200g Espagueti", "2 Huevos grandes", "100g Panceta o Guanciale", "50g Queso Pecorino Romano", "Pimienta Negra molida"],
+                steps: [
+                    "Pon a hervir agua con sal (sin aceite). Cuando hierva, añade la pasta.",
+                    "Mientras tanto, corta la panceta en tiras y sofríela en una sartén grande hasta que esté crujiente. Apaga el fuego.",
+                    "En un tazón, bate los huevos y mezcla con el queso Pecorino rallado y mucha pimienta negra hasta crear una pasta espesa.",
+                    "Cuando la pasta esté al dente, pásala directamente a la sartén con la panceta (guarda un poco de agua de cocción).",
+                    "IMPORTANTE: Con el fuego APAGADO, vierte la mezcla de huevo sobre la pasta caliente y mezcla vigorosamente. El calor residual cocinará el huevo sin hacerlo revuelto."
+                ],
+                time: "20 min",
+                likes: 120,
+                proposals: [] 
+            },
+            {
+                id: 2,
+                title: "Tacos al Pastor Caseros",
+                author: "AnaCocina",
+                image: "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=800&q=80",
+                description: "Sin trompo pero con todo el sabor. El secreto está en el adobo de guajillo.",
+                ingredients: ["1kg Lomo de cerdo", "3 Chiles guajillo", "1/2 taza de Jugo de piña", "1/4 cebolla", "Cilantro y cebolla picada", "Piña natural"],
+                steps: [
+                    "Hierve los chiles guajillo con la cebolla y el ajo hasta que estén suaves.",
+                    "Licúa los chiles con el jugo de piña, vinagre, sal y especias para crear el adobo.",
+                    "Marina la carne con el adobo por al menos 2 horas.",
+                    "En un sartén muy caliente, fríe la carne.",
+                    "Sirve en tortillas calientes con piña, cilantro y cebolla."
+                ],
+                time: "45 min",
+                likes: 85,
+                proposals: [
+                    { user: "Invitado", text: "Yo agrego un poco de vinagre de manzana a la carne para suavizarla más.", type: "improvement" }
+                ]
+            },
+            {
+                id: 3,
+                title: "Brownies de Aguacate",
+                author: "GreenLife",
+                image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=800&q=80",
+                description: "Postre fit. Increíblemente cremosos y nadie nota el ingrediente secreto.",
+                ingredients: ["2 Aguacates", "1/2 taza Cacao", "2 Huevos", "1/2 taza Miel de Maple", "Vainilla", "Chispas de chocolate"],
+                steps: [
+                    "Precalienta el horno a 180°C.",
+                    "Licúa todos los ingredientes excepto las chispas.",
+                    "Incorpora las chispas con espátula.",
+                    "Hornea por 25-30 minutos en molde engrasado.",
+                    "Deja enfriar antes de cortar."
+                ],
+                time: "40 min",
+                likes: 240,
+                proposals: []
+            }
+        ];
+
+        // --- COMPONENTE PRINCIPAL ---
+        const App = () => {
+            const [recipes, setRecipes] = useState([]);
+            const [favorites, setFavorites] = useState([]);
+            const [likedRecipes, setLikedRecipes] = useState([]);
+            const [activeTab, setActiveTab] = useState('feed'); 
+            const [user, setUser] = useState(null);
+            const [viewingRecipe, setViewingRecipe] = useState(null);
+            
+            // Estado para MODALES
+            const [proposalModalOpen, setProposalModalOpen] = useState(false);
+            const [uploadModalOpen, setUploadModalOpen] = useState(false);
+            
+            const [selectedRecipeId, setSelectedRecipeId] = useState(null);
+            const [proposalText, setProposalText] = useState("");
+            
+            // Estado para NUEVA RECETA
+            const [newRecipe, setNewRecipe] = useState({
+                title: "",
+                description: "",
+                image: "",
+                ingredients: "", // Se procesará como string y luego array
+                steps: "", // Se procesará como string y luego array
+                time: ""
+            });
+
+            // Login Input State
+            const [loginEmail, setLoginEmail] = useState("");
+
+            useEffect(() => {
+                const storedRecipes = localStorage.getItem('tc_recipes');
+                const storedFavs = localStorage.getItem('tc_favorites');
+                const storedLikes = localStorage.getItem('tc_likes');
+                const storedUser = localStorage.getItem('tc_user');
+
+                if (storedRecipes) {
+                    setRecipes(JSON.parse(storedRecipes));
+                } else {
+                    setRecipes(INITIAL_DATA);
+                    localStorage.setItem('tc_recipes', JSON.stringify(INITIAL_DATA));
+                }
+
+                if (storedFavs) setFavorites(JSON.parse(storedFavs));
+                if (storedLikes) setLikedRecipes(JSON.parse(storedLikes));
+                if (storedUser) setUser(JSON.parse(storedUser));
+            }, []);
+
+            useEffect(() => { if (recipes.length > 0) localStorage.setItem('tc_recipes', JSON.stringify(recipes)); }, [recipes]);
+            useEffect(() => { localStorage.setItem('tc_favorites', JSON.stringify(favorites)); }, [favorites]);
+            useEffect(() => { localStorage.setItem('tc_likes', JSON.stringify(likedRecipes)); }, [likedRecipes]);
+
+            // --- LÓGICA DE INTERACCIÓN ---
+
+            const handleLike = (id, e) => {
+                if(e) e.stopPropagation();
+                playSound('click');
+                const isLiked = likedRecipes.includes(id);
+                let newLikedRecipes = isLiked ? likedRecipes.filter(lid => lid !== id) : [...likedRecipes, id];
+                setLikedRecipes(newLikedRecipes);
+
+                const updatedRecipes = recipes.map(recipe => {
+                    if (recipe.id === id) return { ...recipe, likes: isLiked ? recipe.likes - 1 : recipe.likes + 1 };
+                    return recipe;
+                });
+                setRecipes(updatedRecipes);
+            };
+
+            const toggleFavorite = (id, e) => {
+                if(e) e.stopPropagation();
+                playSound('click');
+                if (favorites.includes(id)) {
+                    setFavorites(favorites.filter(favId => favId !== id));
+                } else {
+                    setFavorites([...favorites, id]);
+                }
+            };
+
+            const openRecipeDetail = (recipe) => {
+                playSound('nav');
+                setViewingRecipe(recipe);
+            };
+
+            // --- LÓGICA DE PROPUESTAS ---
+            const openProposalModal = (id, e) => {
+                if(e) e.stopPropagation();
+                playSound('nav');
+                setSelectedRecipeId(id);
+                setProposalModalOpen(true);
+            };
+
+            const submitProposal = () => {
+                if (!proposalText.trim()) return;
+                playSound('success'); 
+                const updatedRecipes = recipes.map(recipe => {
+                    if (recipe.id === selectedRecipeId) {
+                        const newProposal = {
+                            user: user ? user.name : "Anónimo",
+                            text: proposalText,
+                            type: "improvement"
+                        };
+                        return { ...recipe, proposals: [newProposal, ...recipe.proposals] };
+                    }
+                    return recipe;
+                });
+                setRecipes(updatedRecipes);
+                setProposalText("");
+                setProposalModalOpen(false);
+            };
+
+            // --- LÓGICA DE LOGIN DINÁMICO ---
+            const handleLogin = (e) => {
+                e.preventDefault();
+                playSound('success');
+                // Simulamos crear un usuario basado en el email
+                const generatedName = loginEmail.split('@')[0];
+                const cleanName = generatedName.charAt(0).toUpperCase() + generatedName.slice(1);
+                
+                const fakeUser = { name: cleanName, email: loginEmail };
+                setUser(fakeUser);
+                localStorage.setItem('tc_user', JSON.stringify(fakeUser));
+                setLoginEmail("");
+            };
+
+            // --- LÓGICA DE SUBIR RECETA ---
+            const handleUploadSubmit = () => {
+                if (!newRecipe.title || !newRecipe.description) {
+                    alert("Por favor completa al menos el título y la descripción.");
+                    return;
+                }
+                
+                playSound('success');
+
+                const recipeToAdd = {
+                    id: Date.now(), // ID único basado en tiempo
+                    title: newRecipe.title,
+                    author: user ? user.name : "Invitado",
+                    image: newRecipe.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80", // Placeholder si no hay imagen
+                    description: newRecipe.description,
+                    ingredients: newRecipe.ingredients.split(',').map(i => i.trim()).filter(i => i),
+                    steps: newRecipe.steps.split('\n').map(s => s.trim()).filter(s => s),
+                    time: newRecipe.time || "30 min",
+                    likes: 0,
+                    proposals: []
+                };
+
+                setRecipes([recipeToAdd, ...recipes]);
+                setUploadModalOpen(false);
+                setNewRecipe({ title: "", description: "", image: "", ingredients: "", steps: "", time: "" }); // Reset form
+            };
+
+            // --- VISTAS ---
+
+            const renderRecipeDetail = () => {
+                if (!viewingRecipe) return null;
+                const currentRecipe = recipes.find(r => r.id === viewingRecipe.id) || viewingRecipe;
+                const isFav = favorites.includes(currentRecipe.id);
+                const isLiked = likedRecipes.includes(currentRecipe.id);
+
+                return (
+                    <div className="fixed inset-0 z-50 bg-white overflow-y-auto pb-24 slide-up">
+                        <div className="relative h-72">
+                            <img src={currentRecipe.image} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <button onClick={() => setViewingRecipe(null)} className="absolute top-4 left-4 bg-white/20 backdrop-blur-md p-2 rounded-full text-white hover:bg-white/40 transition">
+                                <IconArrowLeft />
+                            </button>
+                            <div className="absolute top-4 right-4 flex gap-3">
+                                <button onClick={(e) => toggleFavorite(currentRecipe.id, e)} className="bg-white/20 backdrop-blur-md p-2 rounded-full text-white hover:bg-white/40 transition">
+                                    <IconBookmark filled={isFav} />
+                                </button>
+                            </div>
+                            <div className="absolute bottom-6 left-6 text-white w-full pr-6">
+                                <h2 className="text-3xl font-bold shadow-black drop-shadow-md leading-tight mb-2">{currentRecipe.title}</h2>
+                                <div className="flex items-center gap-4 text-sm font-medium">
+                                    <span className="flex items-center gap-1"><IconUser /> {currentRecipe.author}</span>
+                                    {currentRecipe.time && <span className="flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg"><IconClock /> {currentRecipe.time}</span>}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 max-w-md mx-auto">
+                            <div className="flex justify-between items-start mb-6">
+                                <p className="text-gray-600 italic leading-relaxed text-sm flex-1 mr-4">{currentRecipe.description}</p>
+                                <button onClick={(e) => handleLike(currentRecipe.id, e)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition btn-press ${isLiked ? 'bg-red-50 border-red-100 text-red-500' : 'border-gray-100 text-gray-400'}`}>
+                                    <IconHeart filled={isLiked} /> 
+                                    <span className="text-xs font-bold">{currentRecipe.likes}</span>
+                                </button>
+                            </div>
+                            <hr className="border-gray-100 mb-6"/>
+                            <div className="mb-8">
+                                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <span className="bg-emerald-100 text-emerald-600 p-1 rounded-lg text-sm">🥗</span> Ingredientes
+                                </h3>
+                                <ul className="space-y-3">
+                                    {currentRecipe.ingredients.length > 0 ? currentRecipe.ingredients.map((ing, i) => (
+                                        <li key={i} className="flex items-start gap-3 text-gray-700 text-sm">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2 shrink-0"></div>{ing}
+                                        </li>
+                                    )) : <p className="text-sm text-gray-400">Sin ingredientes listados.</p>}
+                                </ul>
+                            </div>
+                            <div className="mb-8">
+                                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                    <span className="bg-emerald-100 text-emerald-600 p-1 rounded-lg text-sm">🔥</span> Preparación
+                                </h3>
+                                <div className="space-y-6">
+                                    {currentRecipe.steps && currentRecipe.steps.length > 0 ? currentRecipe.steps.map((step, i) => (
+                                        <div key={i} className="flex gap-4">
+                                            <div className="flex-shrink-0 w-8 h-8 bg-emerald-50 text-emerald-600 font-bold rounded-full flex items-center justify-center text-sm border border-emerald-100">
+                                                {i + 1}
+                                            </div>
+                                            <p className="text-gray-600 text-sm leading-relaxed pt-1">{step}</p>
+                                        </div>
+                                    )) : <p className="text-sm text-gray-400">Sin pasos definidos.</p>}
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2"><IconChef /> Comunidad</h3>
+                                <button onClick={(e) => openProposalModal(currentRecipe.id, e)} className="w-full py-3 bg-white border border-emerald-200 text-emerald-700 rounded-xl font-bold text-sm shadow-sm hover:shadow-md transition flex justify-center items-center gap-2 btn-press">
+                                    <IconMessage /> Proponer Mejora
+                                </button>
+                                <div className="mt-4 space-y-3">
+                                    {currentRecipe.proposals.length > 0 && currentRecipe.proposals.map((prop, idx) => (
+                                        <div key={idx} className="bg-white border-l-4 border-emerald-400 p-3 pl-4 rounded-r-lg shadow-sm text-sm">
+                                            <p className="font-bold text-gray-800 text-xs mb-1">{prop.user}</p>
+                                            <p className="text-gray-600 italic">"{prop.text}"</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const RecipeCard = ({ recipe, isFav, isLiked, onLike, onFav, onPropose, onClick }) => (
+                <div onClick={onClick} className="bg-white rounded-3xl shadow-md shadow-gray-100 mx-4 mb-8 overflow-hidden border border-gray-50 transition-all hover:shadow-lg cursor-pointer transform hover:scale-[1.02]">
+                    <div className="relative h-56">
+                        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover"/>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                        <button onClick={onFav} className="absolute top-4 right-4 bg-white/30 backdrop-blur-md p-2 rounded-full shadow-sm btn-press hover:bg-white/50 transition border border-white/20">
+                            <IconBookmark filled={isFav} />
+                        </button>
+                        <div className="absolute bottom-4 left-4 text-white w-full pr-4">
+                            <h3 className="text-xl font-bold shadow-black drop-shadow-md truncate">{recipe.title}</h3>
+                            <p className="text-xs opacity-90 flex items-center gap-1 mt-1 font-medium"><span className="text-emerald-300">Por:</span> {recipe.author}</p>
+                        </div>
+                    </div>
+                    <div className="p-5">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex gap-2 flex-wrap">
+                                {recipe.time && <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-md tracking-wider border border-gray-200 flex items-center gap-1"><IconClock/> {recipe.time}</span>}
+                                {recipe.ingredients && <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md tracking-wider border border-emerald-100">{recipe.ingredients.length} Ingredientes</span>}
+                            </div>
+                            <button onClick={onLike} className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-xs btn-press transition border ${isLiked ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                <IconHeart filled={isLiked} /> {recipe.likes}
+                            </button>
+                        </div>
+                        <p className="text-gray-600 text-sm mb-4 leading-relaxed line-clamp-2">{recipe.description}</p>
+                        <p className="text-emerald-600 text-xs font-bold mb-4 underline">Ver receta completa &rarr;</p>
+                        <button onClick={onPropose} className="w-full py-3 border border-emerald-600 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-600 hover:text-white transition-all btn-press flex justify-center items-center gap-2 shadow-sm">
+                            <IconMessage /> Proponer un Cambio
+                        </button>
+                    </div>
+                </div>
+            );
+
+            // --- RENDERIZADO PRINCIPAL ---
+            return (
+                <div className="max-w-md mx-auto bg-gray-50 min-h-screen shadow-2xl relative border-x border-gray-200">
+                    <main>
+                        {activeTab === 'feed' && (
+                            <div className="space-y-6 pb-24 fade-in">
+                                <div className="bg-emerald-600 text-white p-6 rounded-b-[2.5rem] shadow-xl mb-4 sticky top-0 z-10">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h1 className="text-3xl font-bold tracking-tight">Tu Cocina</h1>
+                                        <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm"><IconChef /></div>
+                                    </div>
+                                    <p className="text-emerald-100 text-sm font-light">Conectada al mundo 🌿</p>
+                                </div>
+                                {recipes.map(recipe => (
+                                    <RecipeCard 
+                                        key={recipe.id} 
+                                        recipe={recipe} 
+                                        isFav={favorites.includes(recipe.id)}
+                                        isLiked={likedRecipes.includes(recipe.id)}
+                                        onLike={(e) => handleLike(recipe.id, e)}
+                                        onFav={(e) => toggleFavorite(recipe.id, e)}
+                                        onPropose={(e) => openProposalModal(recipe.id, e)}
+                                        onClick={() => openRecipeDetail(recipe)}
+                                    />
+                                ))}
+                                {/* FAB BUTTON (ADD RECIPE) */}
+                                <button onClick={() => setUploadModalOpen(true)} className="fixed bottom-24 right-6 bg-emerald-600 text-white p-4 rounded-full shadow-lg shadow-emerald-200 btn-press z-30 flex items-center justify-center hover:bg-emerald-700 transition transform hover:scale-105">
+                                    <IconPlus />
+                                </button>
+                            </div>
+                        )}
+
+                        {activeTab === 'favorites' && (
+                            <div className="space-y-6 pb-24 fade-in pt-6">
+                                <div className="px-6">
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b border-emerald-100 pb-2">Tus Guardados</h2>
+                                    {recipes.filter(r => favorites.includes(r.id)).length === 0 ? (
+                                        <div className="text-center text-gray-400 mt-20 flex flex-col items-center">
+                                            <IconBookmark filled={false} /><p className="mt-2">No has guardado recetas aún.</p>
+                                        </div>
+                                    ) : (
+                                        recipes.filter(r => favorites.includes(r.id)).map(recipe => (
+                                            <RecipeCard 
+                                                key={recipe.id} 
+                                                recipe={recipe} 
+                                                isFav={true}
+                                                isLiked={likedRecipes.includes(recipe.id)}
+                                                onLike={(e) => handleLike(recipe.id, e)}
+                                                onFav={(e) => toggleFavorite(recipe.id, e)}
+                                                onPropose={(e) => openProposalModal(recipe.id, e)}
+                                                onClick={() => openRecipeDetail(recipe)}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'account' && (
+                            <div className="p-6 fade-in min-h-screen flex flex-col justify-center items-center pb-24">
+                                {user ? (
+                                    <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm text-center border border-gray-100">
+                                        <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-md">
+                                            <span className="text-4xl">👨‍🍳</span>
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-gray-800">{user.name}</h2>
+                                        <p className="text-gray-500 mb-6 text-sm">{user.email}</p>
+                                        <div className="bg-emerald-50 p-4 rounded-xl text-left mb-6 border border-emerald-100">
+                                            <p className="text-sm text-emerald-900 mb-1"><strong>Nivel:</strong> Sous Chef</p>
+                                            <p className="text-sm text-emerald-900"><strong>Aportes:</strong> {recipes.reduce((acc, r) => acc + r.proposals.filter(p => p.user === user.name).length, 0)} mejoras</p>
+                                        </div>
+                                        <button onClick={() => {setUser(null); localStorage.removeItem('tc_user');}} className="w-full py-3 text-red-500 font-bold border border-red-100 rounded-xl hover:bg-red-50 transition text-sm">Cerrar Sesión</button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white p-8 rounded-[2rem] shadow-xl w-full max-w-sm border border-gray-100">
+                                        <div className="text-center mb-8">
+                                            <h2 className="text-2xl font-bold text-gray-800">Bienvenido</h2>
+                                            <p className="text-gray-500 text-sm mt-1">Únete a la comunidad gastronómica</p>
+                                        </div>
+                                        <form onSubmit={handleLogin} className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Email</label>
+                                                <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="tu_nombre@ejemplo.com"/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Contraseña</label>
+                                                <input type="password" required className="w-full rounded-xl border-gray-200 bg-gray-50 p-3 outline-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="••••••••"/>
+                                            </div>
+                                            <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition btn-press mt-2">Iniciar Sesión</button>
+                                        </form>
+                                        <p className="mt-6 text-xs text-center text-gray-400 max-w-[200px] mx-auto">No necesitas cuenta para ver o proponer cambios en recetas.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Navbar */}
+                    {!viewingRecipe && (
+                        <nav className="fixed bottom-0 w-full max-w-md bg-white/90 backdrop-blur-md border-t border-gray-100 flex justify-around py-3 z-40 pb-5 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                            <button onClick={() => {playSound('nav'); setActiveTab('feed')}} className={`flex flex-col items-center p-2 rounded-xl transition duration-300 ${activeTab === 'feed' ? 'text-emerald-600 scale-110' : 'text-gray-400 hover:bg-gray-50'}`}>
+                                <IconHome active={activeTab === 'feed'} />
+                                <span className="text-[10px] mt-1 font-bold">Inicio</span>
+                            </button>
+                            <button onClick={() => {playSound('nav'); setActiveTab('favorites')}} className={`flex flex-col items-center p-2 rounded-xl transition duration-300 ${activeTab === 'favorites' ? 'text-emerald-600 scale-110' : 'text-gray-400 hover:bg-gray-50'}`}>
+                                <IconBookmark filled={activeTab === 'favorites'} />
+                                <span className="text-[10px] mt-1 font-bold">Favoritos</span>
+                            </button>
+                            <button onClick={() => {playSound('nav'); setActiveTab('account')}} className={`flex flex-col items-center p-2 rounded-xl transition duration-300 ${activeTab === 'account' ? 'text-emerald-600 scale-110' : 'text-gray-400 hover:bg-gray-50'}`}>
+                                <IconUser />
+                                <span className="text-[10px] mt-1 font-bold">Cuenta</span>
+                            </button>
+                        </nav>
+                    )}
+
+                    {viewingRecipe && renderRecipeDetail()}
+
+                    {/* MODAL DE PROPUESTAS */}
+                    {proposalModalOpen && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-emerald-900/20 backdrop-blur-sm fade-in">
+                            <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl modal-enter border border-white/50">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-gray-800">Proponer Mejora</h3>
+                                    <button onClick={() => setProposalModalOpen(false)} className="bg-gray-100 p-2 rounded-full text-gray-400 hover:bg-gray-200 transition">✕</button>
+                                </div>
+                                <textarea className="w-full bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 focus:ring-2 focus:ring-emerald-500 outline-none text-sm min-h-[120px] resize-none mb-4 transition" placeholder="Ej: Si usas mantequilla en lugar de aceite..." value={proposalText} onChange={(e) => setProposalText(e.target.value)}></textarea>
+                                <button onClick={submitProposal} className="w-full bg-emerald-600 text-white rounded-xl py-3 font-bold shadow-lg shadow-emerald-200 btn-press hover:bg-emerald-700 transition">Publicar</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL DE SUBIR RECETA */}
+                    {uploadModalOpen && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-emerald-900/20 backdrop-blur-sm fade-in overflow-y-auto">
+                            <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-2xl modal-enter border border-white/50 my-10">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-gray-800">Nueva Receta</h3>
+                                    <button onClick={() => setUploadModalOpen(false)} className="bg-gray-100 p-2 rounded-full text-gray-400 hover:bg-gray-200 transition">✕</button>
+                                </div>
+                                
+                                <div className="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-1">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Título</label>
+                                        <input type="text" className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: Ensalada César" value={newRecipe.title} onChange={(e) => setNewRecipe({...newRecipe, title: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">URL Imagen (Opcional)</label>
+                                        <div className="flex gap-2">
+                                            <input type="text" className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="https://..." value={newRecipe.image} onChange={(e) => setNewRecipe({...newRecipe, image: e.target.value})} />
+                                            <div className="bg-gray-100 p-3 rounded-xl text-gray-400"><IconImage/></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descripción corta</label>
+                                        <textarea className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none h-20 resize-none" placeholder="Breve resumen delicioso..." value={newRecipe.description} onChange={(e) => setNewRecipe({...newRecipe, description: e.target.value})}></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ingredientes (Separar por comas)</label>
+                                        <textarea className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none h-20 resize-none" placeholder="Lechuga, Pollo, Queso..." value={newRecipe.ingredients} onChange={(e) => setNewRecipe({...newRecipe, ingredients: e.target.value})}></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Pasos (Un paso por línea)</label>
+                                        <textarea className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none h-24 resize-none" placeholder="1. Lavar lechuga&#10;2. Cortar pollo" value={newRecipe.steps} onChange={(e) => setNewRecipe({...newRecipe, steps: e.target.value})}></textarea>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tiempo</label>
+                                        <input type="text" className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ej: 15 min" value={newRecipe.time} onChange={(e) => setNewRecipe({...newRecipe, time: e.target.value})} />
+                                    </div>
+                                </div>
+
+                                <div className="mt-6">
+                                    <button onClick={handleUploadSubmit} className="w-full bg-emerald-600 text-white rounded-xl py-3 font-bold shadow-lg shadow-emerald-200 btn-press hover:bg-emerald-700 transition">Subir Receta</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
