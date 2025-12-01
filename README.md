@@ -19,9 +19,9 @@ Resolvemos el problema de las recetas "muertas" permitiendo que cualquier usuari
 
 ## Instalación y Uso
 
-Este proyecto fue diseñado para ser **portable y ligero**. No requiere instalación de dependencias npm ni configuración de backend.
+Este proyecto fue diseñado para ser **portable y ligero**. No requiere instalación de dependencias npm ni configuración de backend (de momento, ya que por ahora el enfoque es meramente experimental a traves de este prototipo para especial atencion en la experiencia multimedia y accesibilidad).
 
-1.  **Clonar** este repositorio o descargar el ZIP.
+1.  **Clonar** este repositorio.
 2.  Abrir el archivo `index.html` en cualquier navegador moderno (Chrome, Edge, Firefox).
 3.  **¡Listo!** La aplicación cargará inmediatamente.
 
